@@ -1,0 +1,816 @@
+<template>
+    <div
+      style="height: 100%; width: 100%"
+      class="d-flex justify-center align-center pa-1"
+    >
+      <div v-if="product?._id" class="card" style="width: 100%">
+        <v-hover>
+          <template v-slot:default="{ isHovering, props }">
+            <v-card
+              :elevation="grayBg() ? '0' : '1'"
+              rounded="lg"
+              style="
+                height: 100% !important;
+                flex-direction: column;
+                border: 1px solid #f2f2f2;
+              "
+              class="d-flex cardContainer"
+              @click.stop="goToLink('/p/' + product?.slug, $event)"
+              id="cardComponent"
+              v-bind="props"
+            >
+              <v-card
+                elevation="0"
+                rounded="lg"
+                style="min-height: 100% !important; flex-direction: column"
+                class="d-flex justify-space-between"
+              >
+                <v-sheet>
+                  <div
+                    class="d-flex justify-space-between px-2 pt-1"
+                    v-if="
+                      ($vuetify.display.mdAndUp &&
+                        product?.brand &&
+                        product?.brand.image) ||
+                      checkPrice(product?.defaultVariantId) < product?.price
+                    "
+                  >
+                    <div class="abs" style="top: 6.8px; left: 10px">
+                      <v-btn
+                        v-if="
+                          checkPrice(product?.defaultVariantId) < product?.price
+                        "
+                        dark
+                        elevation="0"
+                        color="#ec2a45"
+                        style="height: 24px"
+                        rounded="xl"
+                        ><p
+                          style="color: white; font-size: 12px; font-weight: 500"
+                          class="py-1"
+                        >
+                          {{
+                            calcPrice(
+                              checkPrice(product?.defaultVariantId),
+                              product?.defaultVariantId.price
+                            )
+                          }}
+                        </p></v-btn
+                      >
+                    </div>
+  
+                    <div
+                      v-if="product?.brand && product?.brand.image"
+                      class="abs"
+                    >
+                      <div
+                        style="
+                          height: 20px;
+                          background: #fff;
+                          border-radius: 25px;
+                          overflow: hidden;
+                        "
+                      >
+                        <img
+                          :src="product?.brand.image"
+                          style="height: 20px; padding: 2px"
+                        />
+                      </div>
+                    </div>
+                  </div>
+  
+                  <div v-else style="height: 32px; background-color: white"></div>
+  
+                  <!-- Image -->
+                  <div
+                    elevation="0"
+                    class="imageContainer pa-0"
+                    style="cursor: pointer; position: relative"
+                  >
+                    <div
+                      v-if="hasGift(product)"
+                      style="
+                        bottom: 10px;
+                        right: 10px;
+                        position: absolute;
+                        z-index: 1;
+                      "
+                    >
+                      <div
+                        class="pa-2"
+                        style="
+                          width: 48px;
+                          height: 48px;
+                          background: #ec2a45;
+                          border-radius: 25px;
+                        "
+                      >
+                        <v-img
+                          src="@/assets/icons/icon_gift.png"
+                          style="
+                            filter: brightness(0%) invert(1);
+                            width: 48px;
+                            height: 48px;
+                            flex: none;
+                          "
+                          class="mr-3"
+                        />
+                      </div>
+                    </div>
+                    <img
+                      v-if="product?.thumbnails.length > 1"
+                      :src="
+                        isHovering
+                          ? CpictSmall(product?.thumbnails[1])
+                          : CpictSmall(product?.thumbnails[0])
+                      "
+                      contain
+                      class="image"
+                      ref="imageRef"
+                      v-show="isLoaded"
+                      @load="onImgLoad"
+                    />
+                    <img
+                      v-else
+                      :src="CpictSmall(product?.thumbnails[0])"
+                      class="image"
+                      v-show="isLoaded"
+                      @load="onImgLoad"
+                    />
+                    <v-skeleton-loader
+                      v-if="!isLoaded"
+                      type="image"
+                      style="margin-top: -14px"
+                    />
+                  </div>
+                  <!-- Name -->
+                  <div class="d-flex flex-column align-start">
+                    <v-tooltip location="bottom end" open-delay="500">
+                      <template v-slot:activator="{ props }">
+                        <v-card-text
+                          v-bind="props"
+                          class="clamp py-0 px-3 text-left"
+                          style="font-weight: 400"
+                        >
+                          {{ getName(product?.translates) }}
+                        </v-card-text>
+                      </template>
+                      <span>{{ getName(product?.translates) }}</span>
+                    </v-tooltip>
+                    <v-rating
+                      v-if="product.rate"
+                      :model-value="Math.ceil(Number(product.rate) * 2) / 2"
+                      density="comfortable"
+                      half-increments
+                      size="x-small"
+                      color="boom"
+                      class="px-2 mt-n1 mb-n2"
+                      disabled
+                      style="height: 25px"
+                    ></v-rating>
+                    <!-- <p
+                      v-else
+                      style="
+                        font-size: 12px;
+                        font-weight: 400;
+                        line-height: 12px;
+                        opacity: 0.6;
+                        height: 21px;
+                      "
+                      class="px-3 d-flex align-center"
+                    >
+                      {{ $translate("no_rate") }}
+                    </p> -->
+                  </div>
+                  <!-- Price -->
+                  <div class="priceHeight d-flex align-center px-3 py-4 mt-1">
+                    <div class="">
+                      <div style="line-height: 10px">
+                        <div
+                          class="my-2 align-baseline flex-column-reverse flex-lg-row d-flex"
+                        >
+                          <span
+                            class="price mr-0 mr-lg-2 mb-2 mb-lg-0"
+                            :class="
+                              checkPriceDate(product?.defaultVariantId)
+                                ? 'text-boom'
+                                : ''
+                            "
+                          >
+                            {{
+                              price(
+                                checkPriceDate(product?.defaultVariantId)
+                                  ? variantSalePrice(product?.defaultVariantId)
+                                      ?.sellPrice
+                                  : variantSalePrice(product?.defaultVariantId)
+                                      ?.price,
+                                product?.currency
+                              )
+                            }}
+                          </span>
+  
+                          <span
+                            class="d-flex oldPrice"
+                            v-if="checkPriceDate(product?.defaultVariantId)"
+                          >
+                            {{
+                              price(
+                                product?.defaultVariantId?.price,
+                                product?.currency
+                              )
+                            }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </v-sheet>
+                <v-spacer />
+                <v-sheet class="mb-2">
+                  <!-- Flag -->
+                  <div class="d-flex align-center px-3 pt-1 pb-4">
+                    <div
+                      style="width: 26px; height: 20px"
+                      class="d-flex align-center justify-center"
+                    >
+                      <country-flag
+                        v-if="product?.imoprtedFrom === 'us'"
+                        country="us"
+                        class="rounded-lg"
+                        size="large"
+                      />
+                      <country-flag
+                        v-if="product?.imoprtedFrom === 'krS'"
+                        country="kor"
+                        class="rounded-lg"
+                        size="medium"
+                      />
+                      <country-flag
+                        v-if="product?.imoprtedFrom === 'mn'"
+                        country="mn"
+                        class="rounded-lg"
+                        size="medium"
+                      />
+                      <country-flag
+                        v-else-if="product?.imoprtedFrom === 'cn'"
+                        country="cn"
+                        class="rounded-lg"
+                        size="medium"
+                      />
+                        <country-flag
+                        v-else-if="product?.imoprtedFrom === 'jn'"
+                          country="jp"
+                          class="rounded-lg"
+                          size="medium"
+                        />
+  
+                    </div>
+                    <p
+                      class="mx-2 pt-2 text-left"
+                      style="font-size: 12px; line-height: 12px; opacity: 0.6"
+                      v-if="product?.type == 'product'"
+                    >
+                      {{ $translate("ирнэ") }} {{ calculateArrival }}
+                      {{ $translate("ирнэ") }}
+                    </p>
+                    <p
+                      class="mx-2 pt-2 text-left"
+                      style="font-size: 12px; line-height: 12px; opacity: 0.6"
+                      v-if="product?.type == 'digital'"
+                    >
+                      <!-- {{ $translate("бэлэн") }} -->
+                    </p>
+                  </div>
+                  <v-row class="ma-0">
+                    <v-col
+                      cols="12"
+                      :lg="heartBtn ? '8' : '12'"
+                      class="py-1 pr-lg-1"
+                      v-if="buyBtn"
+                    >
+                      <v-btn
+                        @click.stop="addToItems(product)"
+                        block
+                        :disabled="
+                          product?.isUnlimited ? false : !product?.inStock
+                        "
+                        class="flex rounded-lg"
+                        style="border-color: black"
+                        :style="
+                          (product?.isUnlimited ? false : !product?.inStock)
+                            ? 'border: none'
+                            : ''
+                        "
+                        elevation="0"
+                        :color="
+                          (product?.isUnlimited ? false : !product?.inStock)
+                            ? '#dcdcdc'
+                            : '#ec2a45'
+                        "
+                      >
+                        <v-img
+                          src="@/assets/logo.png"
+                          style="
+                            filter: brightness(0%) invert(1);
+                            width: 25px;
+                            height: 25px;
+                            flex: none;
+                          "
+                          class="mx-2 mr-4"
+                        />
+                      </v-btn>
+                    </v-col>
+                    <v-col
+                      cols="12"
+                      :lg="buyBtn ? '4' : '12'"
+                      class="py-1 pl-lg-1"
+                      v-if="heartBtn"
+                    >
+                      <v-btn
+                        block
+                        elevation="0"
+                        @click.stop="addFavorite(product?._id)"
+                        class="d-flex align-center justify-center"
+                        :class="{ animating: wishlist }"
+                        color="#F2F2F2"
+                        rounded="lg"
+                      >
+                        <v-icon size="x-large" v-if="!wishlist" style="z-index: 1"
+                          >mdi-heart-outline</v-icon
+                        >
+                        <v-icon
+                          v-if="wishlist"
+                          color="boom"
+                          size="x-large"
+                          :style="{
+                            animation: !wishlist ? 'iconSwitch 0.05s' : '',
+                          }"
+                          >mdi-heart</v-icon
+                        >
+                      </v-btn>
+                    </v-col>
+                  </v-row>
+                </v-sheet>
+              </v-card>
+            </v-card>
+          </template>
+        </v-hover>
+      </div>
+      <div class="card" v-else style="width: 100%; height: 100%">
+        <v-skeleton-loader
+          type="image, subtitle, paragraph"
+          :elevation="0"
+          style="width: 100%; height: 100%"
+          class="rounded-lg"
+        >
+        </v-skeleton-loader>
+      </div>
+    </div>
+  </template>
+  
+  <script type="module" lang="ts">
+  import { toast, type ToastOptions } from "vue3-toastify";
+  import moment from "moment";
+  import CountryFlag from "vue-country-flag-next";
+  export default {
+    props: {
+      product  : Object,
+      wishItems: Array as any,
+      buyBtn   : { type: Boolean, default: true },
+      heartBtn : { type: Boolean, default: true },
+    },
+    components: { CountryFlag },
+    data() {
+      return {
+        isLoaded : false,
+        wishlist : false,
+        Animating: false,
+      };
+    },
+    mounted() {
+      // this.wishlist = this.wishItems?.includes(this.product?._id) || false;
+    },
+    computed: {
+      calcAppend() {
+        let i = 0;
+        if (localStorage.getItem("language") != "mn") return "";
+        if (this.calculateArrival?.slice(10, 11) !== undefined)
+          i = parseInt(this.calculateArrival?.slice(10, 11));
+        if (i % 2 == 0) return "-ний";
+        return "-ны";
+      },
+      calculateArrival() {
+        let now = new Date();
+        if (this.product?.imoprtedFrom === "mn") {
+          return moment(now).add((this.product?.deliveryDays +  1) , "days").format("YY/MM/DD");
+        }
+        if (
+          moment(this.product?.availableOn).format("YYYY-MM-DD") >
+            moment().format("YYYY-MM-DD")
+        )
+          now = new Date(this.product?.availableOn);
+        let addDay = parseInt(this.product?.deliveryDays || "0");
+        const day_name = moment(now).add(addDay, "days").format("dddd");
+        switch (day_name) {
+        case "Monday":
+          if (this.product?.imoprtedFrom == "us") addDay += 8;
+          else addDay += 4;
+          break;
+        case "Tuesday":
+          if (this.product?.imoprtedFrom == "us") addDay += 7;
+          else addDay += 7;
+          break;
+        case "Wednesday":
+          if (this.product?.imoprtedFrom == "us") addDay += 13;
+          else addDay += 6;
+          break;
+        case "Thursday":
+          if (this.product?.imoprtedFrom == "us") addDay += 12;
+          else addDay += 8;
+          break;
+        case "Friday":
+          if (this.product?.imoprtedFrom == "us") addDay += 11;
+          else addDay += 7;
+          break;
+        case "Saturday":
+          if (this.product?.imoprtedFrom == "us") addDay += 10;
+          else addDay += 6;
+          break;
+        case "Sunday":
+          if (this.product?.imoprtedFrom == "us") addDay += 9;
+          else addDay += 5;
+          break;
+        }
+        return moment(now).add(addDay, "days").format("YY/MM/DD");
+  
+      },
+    },
+    methods: {
+      onImgLoad() {
+        return this.isLoaded = true;
+      },
+      grayBg() {
+        switch(this.$route.name) {
+        case "Home":
+          return true;
+        case "product-slug":
+          return true;
+        case "product-sku":
+          return true;
+        case "faq":
+          return true;
+        case "about_us":
+          return true;
+        case "notebook":
+          return true;
+        case "orderGuidance":
+          return true;
+        case "loan":
+          return true;
+        case "gifts":
+          return true;
+        case "new":
+          return true;
+        case "sale":
+          return true;
+        case "apple":
+          return true;
+        case "valentine":
+          return true;
+        case "for_him":
+          return true;
+        case "for_her":
+          return true;
+        case "jXVXK2dR":
+          return true;
+        case "pageMulti":
+          return true;
+        default:
+          return false;
+        }
+      },
+      isNewProduct(tags) {
+        for(let tag of tags) {
+          if(tag?.name === "Шинэ" || tag?.hasNewCard) {
+            return true;
+          }
+        }
+        return false;
+      },
+      hasGift(product){
+        if(product?.gifts?.length){
+          const now = moment().format("YYYY-MM-DD HH:mm");
+          let gift = product?.gifts.find(saleVal => moment(saleVal.startDate).format("YYYY-MM-DD HH:mm") <= now && moment(saleVal.expireDate).format("YYYY-MM-DD HH:mm") > now);
+          return gift && gift?.gifts.length ? !!gift.gifts.find((val)=>val.status): false;
+        }
+        return false;
+      },
+      variantSalePrice (item) {
+        let val = {} as any;
+        if (item.variantSales && item.variantSales.length) {
+          const now = moment().format("YYYY-MM-DD HH:mm");
+          let saleItem = item.variantSales.filter(saleVal => moment(saleVal.startDate).format("YYYY-MM-DD HH:mm") <= now && moment(saleVal.expireDate).format("YYYY-MM-DD HH:mm") > now);
+          // eslint-disable-next-line array-callback-return
+          saleItem = saleItem.map((value) => {
+            if (value.type === "flat") { return { ...value, price: item.price - value.ammount }; }
+            if (value.type === "percentage") { return { ...value, price: item.price - (item.price * value.ammount) / 100 }; }
+            if (value.type === "price") { return { ...value, price: value.ammount }; }
+          });
+          val = saleItem.length ? saleItem.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0] : {};
+        }
+        return {  price: item?.price, sellPrice: val?.price ? val?.price : item.price, saleExpireDate: val?.expireDate ? moment(val.expireDate).format("YYYY-MM-DD HH:mm") : "" };
+      },
+      checkPriceDate(item) {
+        const now = moment().format("YYYY-MM-DD HH:mm:SS");
+        if(!item.isBundle){
+          const expireDate = moment(this.variantSalePrice(item)?.saleExpireDate).format("YYYY-MM-DD HH:mm:SS");
+          if(this.variantSalePrice(item)?.sellPrice < this.variantSalePrice(item)?.price && now <= expireDate) {
+            return true;
+          }
+          return false;
+        }
+  
+        let sellPrice = 0;
+        let price = 0;
+        item.variants.map((itemValue)=>{
+          const variant = this.variantSalePrice(itemValue);
+          const expireDate = moment(variant?.saleExpireDate).format("YYYY-MM-DD HH:mm:SS");
+          price+=variant.price;
+  
+          if(now <= expireDate) {
+            sellPrice+=variant.sellPrice;
+          }
+          else {
+            sellPrice+=variant.price;
+          }
+        });
+        if(sellPrice < price) {
+          return true;
+        }
+        return false;
+  
+      },
+      async addFavorite(id: any) {
+        const store = localStorage.getItem("store") as any;
+        const user = localStorage.getItem("user_token") as any;
+  
+        const response = await this.axios.post("/v1/favourite/add", {
+          store     : JSON.parse(store)._id,
+          product   : id,
+          user_token: user,
+        });
+        if (response.status == 200) {
+          this.wishlist = !this.wishlist;
+          this.Animating = !this.Animating;
+        } else {
+          toast(this.$translate("error_ocurred") + "", {
+            type     : "warning",
+            autoClose: 1000,
+            position : toast.POSITION.TOP_RIGHT,
+          }) as ToastOptions;
+        }
+      },
+      getName(data: any) {
+        if (data && data.length) {
+          return (
+            data?.find(
+              (translate: any) =>
+                translate.language ==
+                JSON.parse(
+                  localStorage.getItem("store") || "{defaultLanguage: \"mn\"}"
+                ).defaultLanguage
+            )?.name || this.product?.name
+          );
+        }
+        return this.product?.name;
+      },
+      getDescription(data: any) {
+        if (data.length) {
+          return data?.find(
+            (translate: any) =>
+              translate.language ==
+              JSON.parse(
+                localStorage.getItem("store") || "{defaultLanguage: \"mn\"}"
+              ).defaultLanguage
+          )?.description;
+        }
+        return "";
+      },
+      async addToItems(data: any) {
+        const store = localStorage.getItem("store") as any;
+  
+        const sendData = {
+          store         : JSON.parse(store)._id,
+          image         : data.thumbnails[0],
+          name          : data.name,
+          sku           : data.sku,
+          slug          : data.slug,
+          product       : data._id,
+          productVariant: data?.defaultVariantId._id,
+          price         : data?.price,
+          sellPrice     : this.checkPrice(data.defaultVariantId),
+          currency      : data.currency,
+          productType   : data.type,
+          type          : "new",
+          total         : 1,
+          backOrderable : data.backOrderable,
+          user_token    : localStorage.getItem("user_token"),
+        };
+        let response = await this.axios.post("/v1/cart/create", sendData);
+        if (response.status == 200) {
+          this.$store.commit("addItem");
+        }
+      },
+      goToLink(link: string, event: any) {
+        if (event.ctrlKey) {
+          window.open(link, "_blank");
+        } else {
+          window.scrollTo({
+            top     : 0,
+            behavior: "smooth",
+          });
+          this.$router.push(link);
+        }
+      },
+      toggle() {
+        this.wishlist = !this.wishlist;
+      },
+      CpictSmall(val: string | null) {
+        return val
+          ? val.includes(
+            "ecommerce-boom.s3.ap-east-1.amazonaws.com" && "productImages"
+          )
+            ? val + "-small"
+            : val
+          : "https://imgur.com/WJCLQkB.png";
+      },
+      CpictMedium(val: string | null) {
+        return val
+          ? val.includes(
+            "ecommerce-boom.s3.ap-east-1.amazonaws.com" && "productImages"
+          )
+            ? val + "-medium"
+            : val
+          : "https://imgur.com/WJCLQkB.png";
+      },
+      CpictLarge(val: string | null) {
+        return val
+          ? val?.includes(
+            "ecommerce-boom.s3.ap-east-1.amazonaws.com" && "productImages"
+          )
+            ? val + "-large"
+            : val
+          : "https://imgur.com/WJCLQkB.png";
+      },
+      price(price: number, currency: string) {
+        if (currency == "MNT") currency = "₮";
+        return price ? price.toLocaleString("en-US") + currency : null;
+      },
+      checkPrice(item) {
+        const store = JSON.parse(localStorage.getItem("store") || "{}");
+        if (item.store !== store?._id && item.storePrices?.boom) {
+          const data = item.storePrices?.boom.variants.find(
+            (variant) => variant._id === item.defaultVariantId._id
+          );
+          return data.sellPrice;
+        }
+        return this.variantSalePrice(item)?.sellPrice;
+      },
+      calcPrice(sellPrice, price) {
+        return sellPrice && price
+          ? "-" +
+              Math.ceil((100 - (parseInt(sellPrice) * 100) / parseInt(price))) +
+              "%"
+          : null;
+      },
+    },
+  };
+  </script>
+  
+  <style scoped>
+  .abs {
+    /* position: absolute; */
+    z-index: 1;
+  }
+  
+  .card {
+    position: relative;
+    height: 100%;
+  }
+  
+  .imageContainer {
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  .image {
+    object-fit: contain;
+    max-width: 100%;
+    width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1/1;
+    padding: 10px;
+  }
+  
+  .oldPrice {
+    font-size: 12px;
+    text-decoration: line-through;
+    color: rgb(177, 177, 177);
+    font-weight: 400;
+  }
+  .priceHeight {
+    height: 20px;
+  }
+  
+  .price {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  
+  @media (min-width: 960px) and (max-width: 1280px) {
+    .margTop {
+      margin-top: 30px !important;
+    }
+  }
+  
+  .clamp {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    height: 20px;
+    font-size: 16px;
+    width: 100%;
+  }
+  
+  .animating {
+    animation: iconSwitch 0.5s;
+  }
+  
+  @keyframes iconSwitch {
+    0% {
+      transform: scale(1);
+    }
+    30% {
+      transform: scale(1.3);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  :deep() .v-btn--disabled.v-btn--variant-elevated .v-btn__overlay,
+  .v-btn--disabled.v-btn--variant-flat .v-btn__overlay {
+    opacity: 0.04;
+  }
+  
+  @media (min-width: 960px) and (max-width: 1280px) {
+    .margTop {
+      margin-top: 30px !important;
+    }
+    .price {
+      font-size: 20px;
+    }
+    .oldPrice {
+      margin-bottom: 8px;
+    }
+    .priceHeight {
+      height: 48px;
+    }
+    .smallCartButtons {
+      margin: 4px !important;
+    }
+  }
+  
+  @media (max-width: 960px) {
+    .oldPrice {
+      margin-bottom: 8px;
+    }
+    .price {
+      font-size: 20px;
+    }
+  
+    .priceHeight {
+      height: 48px;
+    }
+    .smallCartButtons {
+      padding: 4px 12px 12px 12px !important;
+    }
+  }
+  
+  :deep() .v-skeleton-loader__image {
+    aspect-ratio: 1/1;
+    height: auto;
+    margin-bottom: 20px;
+  }
+  
+  :deep() .v-skeleton-loader {
+    display: block;
+    overflow: hidden;
+  }
+  
+  .cardContainer:hover {
+    border: 2px solid #ec2a45 !important;
+    background-color: transparent !important;
+  }
+  </style>
+  
