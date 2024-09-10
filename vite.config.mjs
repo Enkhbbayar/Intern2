@@ -12,7 +12,7 @@ import { fileURLToPath, URL } from "node:url";
 export default defineConfig({
   build: {
     rollupOptions: {
-      external: ["axios"],
+      external: ['axios'],
     },
   },
   plugins: [
