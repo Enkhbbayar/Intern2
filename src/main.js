@@ -12,7 +12,7 @@ import App from "./App.vue";
 
 // Composables
 import { createApp } from "vue";
-import axios from 'axios';
+import axios from "axios";
 import VueAxios from "vue-axios";
 import vuetify from "./plugins/vuetify";
 // import { toast, type ToastOptions } from "vue3-toastify";
